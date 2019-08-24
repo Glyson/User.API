@@ -5,10 +5,12 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using User.API.Data;
 
 namespace User.API
 {
@@ -24,7 +26,9 @@ namespace User.API
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
+            services.AddDbContext<UserContext>();
+
+            services.AddMvc();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -36,6 +40,21 @@ namespace User.API
             }
 
             app.UseMvc();
+            InitUserDatabase(app);
+        }
+
+        public void InitUserDatabase(IApplicationBuilder app)
+        {
+            using (var scope = app.ApplicationServices.CreateScope())
+            {
+                var userContext = scope.ServiceProvider.GetRequiredService<UserContext>();
+                userContext.Database.Migrate();
+                if (!userContext.Users.Any())
+                {
+                    userContext.Users.Add(new Models.AppUser() { Name = "glyson" });
+                    userContext.SaveChanges();
+                }
+            }
         }
     }
 }
